@@ -1,7 +1,6 @@
 {
-  "name": "chai-backend",
+  "name": "connectify-backend",
   "version": "1.0.0",
-  "description": "a backend at chai aur code channel - youtube",
   "type": "module",
   "main": "index.js",
   "scripts": {
@@ -10,9 +9,8 @@
   "keywords": [
     "javascript",
     "backend",
-    "chai"
   ],
-  "author": "Hitesh Choudhary",
+  "author": "Devansh Chechani",
   "license": "ISC",
   "devDependencies": {
     "nodemon": "^3.0.1",
