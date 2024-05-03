@@ -94,7 +94,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
                     _id: 1,
                     username: 1,
                     fullName: 1,
-                    "avatar.url": 1,
+                    avatar: 1,
                     subscribedToSubscriber: 1,
                     subscribersCount: 1,
                 },
@@ -112,11 +112,11 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
 const getSubscribedChannels = asyncHandler(async (req, res) => {
        const {subscriberId} = req.params
         
-       const subscribedChannels= await Subscription.aggregate([
-           {
-               $match: {
+         const subscribedChannels = await Subscription.aggregate([
+        {
+            $match: {
                 subscriber: new mongoose.Types.ObjectId(subscriberId),
-             },
+            },
         },
         {
             $lookup: {
@@ -124,40 +124,63 @@ const getSubscribedChannels = asyncHandler(async (req, res) => {
                 localField: "channel",
                 foreignField: "_id",
                 as: "subscribedChannel",
-                pipeline:[
+                pipeline: [
                     {
-                        $project:{
-                           username:1,
-                           avatar:1,
-                           coverImage:1,
-                           fullName:1
-                        }
-                    }
-                ]
+                        $lookup: {
+                            from: "videos",
+                            localField: "_id",
+                            foreignField: "owner",
+                            as: "videos",
+                        },
+                    },
+                    {
+                        $addFields: {
+                            latestVideo: {
+                                $last: "$videos",
+                            },
+                        },
+                    },
+                ],
             },
         },
         {
-            $addFields:{
-                subscribedChannel:{
-                    $first:"$subscribedChannel"
-                }
-            }
+            $unwind: "$subscribedChannel",
         },
         {
-            $project:{
-                _id:0,
-                subscribedChannel:1
-               
-            }
-        }
-       ])
-       
-      // console.log(count)
-       res.status(200).json(
-        new ApiResponse(201,{subscribedChannels},"SubscribedTo channels")
-    )
-        
-})
+            $project: {
+                _id: 0,
+                subscribedChannel: {
+                    _id: 1,
+                    username: 1,
+                    fullName: 1,
+                    avatar: 1,
+                    latestVideo: {
+                        _id: 1,
+                        videoFile: 1,
+                        thumbnail: 1,
+                        owner: 1,
+                        title: 1,
+                        description: 1,
+                        duration: 1,
+                        createdAt: 1,
+                        views: 1
+                    },
+                },
+            },
+        },
+    ]);
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                subscribedChannels,
+                "subscribed channels fetched successfully"
+            )
+        );
+});
+
 
 export {
     toggleSubscription,
