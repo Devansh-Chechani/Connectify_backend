@@ -6,10 +6,10 @@
   "scripts": {
     "dev": "nodemon src/index.js"
   },
-  "keywords": {
+  "keywords": [
     "javascript",
     "backend"
-  },
+  ],
   "author": "Devansh Chechani",
   "license": "ISC",
   "devDependencies": {
