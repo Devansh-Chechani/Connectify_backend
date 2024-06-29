@@ -9,20 +9,21 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
     const { videoId } = req.params;
 
 // TODO: Toggle like on video
-const existingLike = await Like.findOne({ video: videoId });
+  if(!isValidObjectId(videoId)){
+     throw new ApiError(401,"Invalid videoId")
+  }
+
+  const existingLike = await Like.findOne({ video: videoId ,likedby:req.user?._id});
 
 if (existingLike) {
-    if (existingLike.likedBy.toString() !== req.user._id.toString()) {
-        throw new ApiError(401, "Video can be unliked only by those who have liked the video");
-    } else {
-        await existingLike.remove();
+       await Like.findByIdAndDelete(existingLike?._id);
         return res.status(200).json(new ApiResponse(200, {}, "Unliked the video"));
     }
-} else {
-    const newLike = await Like.create({
-        video: videoId, // Assuming videoId is a valid ObjectId
-        likedBy: req.user._id
-    });
+ else {
+        const newLike = await Like.create({
+            video: videoId, 
+            likedBy: req.user._id
+        });
     return res.status(201).json(new ApiResponse(201, newLike, "Liked the video"));
 }
 
@@ -35,13 +36,13 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
         throw new ApiError(401,"Invalid commentId")
      }
 
-     const comment = await Like.find({comment : commentId})
+     const comment = await Like.findOne({comment : commentId,likedby:req.user?._id})
      
-    if(comment.length > 0){
-        await Like.findByIdAndDelete(comment[0]._id)
+       if(comment){
+          await Like.findByIdAndDelete(comment?._id);
        
        res.status(200).json(
-         new ApiResponse(201,{},"Unliked the comment")
+         new ApiResponse(201,{isLiked:false},"Unliked the comment")
        )
     }
     else{
@@ -65,13 +66,13 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
         throw new ApiError(401,"Invalid tweetId")
      }
 
-     const tweet = await Like.find({tweet:tweetId})
+     const tweet = await Like.findOne({tweet:tweetId,likedby:req.user?._id})
      // console.log(tweet) tweet is an array
-    if(tweet.length > 0){
-        await Like.findByIdAndDelete(tweet[0]._id)
+    if(tweet){
+        await Like.findByIdAndDelete(tweet?._id);
        
        res.status(200).json(
-         new ApiResponse(201,{},"Unliked the tweet")
+         new ApiResponse(201,{isLiked:false},"Unliked the tweet")
        )
     }
     else{
@@ -91,72 +92,75 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
 
 const getLikedVideos = asyncHandler(async (req, res) => {
     //TODO: get all liked videos
-    const videos = await Like.aggregate([
+  const likedVideosAggegate = await Like.aggregate([
         {
-          $match:{
-             likedBy : new mongoose.Types.ObjectId(req.user?._id)
-          }
+            $match: {
+                likedBy: new mongoose.Types.ObjectId(req.user?._id),
+            },
         },
-         {
-            $lookup :{
-                from:"videos",
-                localField : "video",
+       
+        {
+            $lookup: {
+                from: "videos",
+                localField: "video",
                 foreignField: "_id",
-                as : "likedVideos",
-                pipeline:[
+                as: "likedVideo",
+                pipeline: [
                     {
-                         $project:{
-                             videoFile:1,
-                            thumbnail:1,
-                            title:1,
-                            description:1,
-                            views:1,
-                            owner:1,
-                            duration:1
-                        }
-                    }
-                ]
-            }
-         },
-         {
-           $lookup:{
-                from:"users",
-                localField : "likedBy",
-                foreignField: "_id",
-                as : "ownerDetails",
-                 pipeline:[
+                        $lookup: {
+                            from: "users",
+                            localField: "owner",
+                            foreignField: "_id",
+                            as: "ownerDetails",
+                        },
+                    },
                     {
-                         $project:{
-                            _id:1,
-                           username:1
-                        }
-                    }
-                ]
-           }
-         },
-         {
-            $addFields:{
-                ownerDetails : {
-                    $first: "$ownerDetails"
+                        $unwind: "$ownerDetails",
+                    },
+                ],
+            },
+        },
+        {
+            $unwind: "$likedVideo",
+        },
+        {
+            $sort: {
+                createdAt: -1,
+            },
+        },
+        {
+            $project: {
+                _id: 0,
+                likedVideo: {
+                    _id: 1,
+                    videoFile: 1,
+                    thumbnail: 1,
+                    owner: 1,
+                    title: 1,
+                    description: 1,
+                    views: 1,
+                    duration: 1,
+                    createdAt: 1,
+                    isPublished: 1,
+                    ownerDetails: {
+                        username: 1,
+                        fullName: 1,
+                        avatar: 1,
+                    },
                 },
-                likedVideos : {
-                    $first: "$likedVideos"
-                }
-            }
-         },
-         {
-           $project:{
-              likedVideos:1,
-              ownerDetails:1
-           }
-         }
-    ])
+            },
+        },
+    ]);
 
-
-
-    res.status(200).json(
-         new ApiResponse(201,videos,"Liked videos")
-       )
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                likedVideosAggegate,
+                "liked videos fetched successfully"
+            )
+        );
 })
 
 export {
