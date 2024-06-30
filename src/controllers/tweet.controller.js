@@ -85,15 +85,28 @@ const getUserTweets = asyncHandler(async (req, res) => {
              likescount:{
                 $size: "$tweetLikes"
              },
+             isLiked: {
+                    $cond: {
+                        if: {$in: [req.user?._id, "$tweetLikes.likedBy"]},
+                        then: true,
+                        else: false
+                    }
+                }
            }
            
-        }
-        ,{
+        },
+        {
+            $sort: {
+                createdAt: -1
+            }
+        },
+        {
             $project:{
                 content:1,
                 createdAt:1,
                 ownerdetails:1,
                 likescount:1,
+                isLiked:1
                 //tweetLikes:1
             }
         }
@@ -118,7 +131,7 @@ const updateTweet = asyncHandler(async (req, res) => {
     const tweet = await Tweet.findById(tweetId)
 
     if(!tweet){
-        throw new ApiError(401,"Tweet doesn't exists")
+        throw new ApiError(404,"Tweet doesn't exists")
     }
 
    //  console.log(tweet.owner.toString())
@@ -162,14 +175,15 @@ const deleteTweet = asyncHandler(async (req, res) => {
 
     const tweet = await Tweet.findById(tweetId)
     // This toString() method was required to make the code run
-    if(tweet.owner.toString() !== req.user._id.toString()){
+    if(tweet.owner.toString() !== req.user?._id.toString()){
         throw new ApiError(403,"Unauthorized request,users can delete tweets made by them only")
     }
 
     await Tweet.findByIdAndDelete(tweetId)
 
     // likes also needed to be deleted of the tweet
-    await Like.findByIdAndDelete({tweet:tweetId})
+    await Like.deleteMany({ tweet: tweetId });
+
 
     return res.status(200).json(
         new ApiResponse(201,{},"Tweet deleted Successfully")
