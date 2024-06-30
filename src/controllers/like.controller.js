@@ -13,7 +13,9 @@ const toggleVideoLike = asyncHandler(async (req, res) => {
      throw new ApiError(401,"Invalid videoId")
   }
 
-  const existingLike = await Like.findOne({ video: videoId ,likedby:req.user?._id});
+  const existingLike = await Like.findOne({ video: videoId ,likedBy:req.user?._id});
+  //console.log(existingLike)
+  
 
 if (existingLike) {
        await Like.findByIdAndDelete(existingLike?._id);
@@ -36,7 +38,7 @@ const toggleCommentLike = asyncHandler(async (req, res) => {
         throw new ApiError(401,"Invalid commentId")
      }
 
-     const comment = await Like.findOne({comment : commentId,likedby:req.user?._id})
+     const comment = await Like.findOne({comment : commentId,likedBy:req.user?._id})
      
        if(comment){
           await Like.findByIdAndDelete(comment?._id);
@@ -66,7 +68,7 @@ const toggleTweetLike = asyncHandler(async (req, res) => {
         throw new ApiError(401,"Invalid tweetId")
      }
 
-     const tweet = await Like.findOne({tweet:tweetId,likedby:req.user?._id})
+     const tweet = await Like.findOne({tweet:tweetId,likedBy:req.user?._id})
      // console.log(tweet) tweet is an array
     if(tweet){
         await Like.findByIdAndDelete(tweet?._id);
