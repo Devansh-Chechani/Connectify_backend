@@ -30,55 +30,88 @@ const getChannelStats = asyncHandler(async (req, res) => {
 
 const getChannelVideos = asyncHandler(async (req, res) => {
     // TODO: Get all the videos uploaded by the channel
-   if (!req.user) {
-    throw new ApiError(404, "Not found! You need to signin");
-}
+    if (!req.user) {
+        throw new ApiError(404, "Not found! You need to sign in");
+    }
 
-const videos = await Video.aggregate([
-    {
-       $match: {
-          owner: req.user._id
-       }
-    },
-    {
-       $lookup: {
-          from: "likes",
-          foreignField: "video",
-          localField: "_id",
-          as: "likesDetails"
-       }
-    },
-    {
-        $addFields: {
-            likesCount: {
-                $size: "$likesDetails"
-            },
-            createdAt: {
-                $dateToString: {
-                    format: "%Y-%m-%d",
-                    date: "$createdAt"
+    const videos = await Video.aggregate([
+        {
+            $match: {
+                owner: req.user._id
+            }
+        },
+        {
+            $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "video",
+                as: "likesDetails"
+            }
+        },
+        {
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "userDetails",
+                pipeline: [
+                    {
+                        $project: {
+                            avatar: 1,
+                            username: 1,
+                        }
+                    }
+                ]
+            }
+        },
+        {
+            $addFields: {
+                userDetails: {
+                    $first: "$userDetails"
+                },
+                likesCount: {
+                    $size: "$likesDetails"
+                },
+                day: {
+                    $dayOfMonth: "$createdAt"
+                },
+                month: {
+                    $month: "$createdAt"
+                },
+                year: {
+                    $year: "$createdAt"
                 }
-            },
-            day: {
-                $toInt: { $substr: ["$createdAt", 8, 2] }
-            },
-            month: {
-                $toInt: { $substr: ["$createdAt", 5, 2] }
-            },
-            year: {
-                $toInt: { $substr: ["$createdAt", 0, 4] }
+            }
+        },
+        {
+            $project: {
+                _id: 1,
+                title: 1,
+                duration: 1,
+                views: 1,
+                thumbnail: 1,
+                createdAt: 1,
+                isPublished: 1,
+                userDetails: 1,
+                likesCount: 1,
+                day: 1,
+                month: 1,
+                year: 1
+            }
+        },
+        {
+            $sort: {
+                createdAt: -1
             }
         }
-    }
-]);
+    ]);
 
-res.status(200).json(
-    new ApiResponse(201, videos, "Stats of the channel")
-);
-
-})
+    res.status(200).json(
+        new ApiResponse(201, videos, "Stats of the channel")
+    );
+});
 
 export {
-    getChannelStats, 
+    getChannelStats,
     getChannelVideos
-    }
+};
