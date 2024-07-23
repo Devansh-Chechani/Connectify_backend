@@ -52,10 +52,11 @@ const registerUser = asyncHandler( async (req, res) => {
     if (existedUser) {
         throw new ApiError(409, "User with email or username already exists")
     }
-    //console.log(req.files);
+  // console.log(req.files);
 
     const avatarLocalPath = req.files?.avatar[0]?.path;
     //const coverImageLocalPath = req.files?.coverImage[0]?.path;
+    
 
     let coverImageLocalPath;
     if (req.files && Array.isArray(req.files.coverImage) && req.files.coverImage.length > 0) {
@@ -68,6 +69,7 @@ const registerUser = asyncHandler( async (req, res) => {
     }
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
+    console.log(avatar.url)
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
     if (!avatar) {
@@ -265,7 +267,7 @@ const getCurrentUser = asyncHandler(async(req, res) => {
 const updateAccountDetails = asyncHandler(async(req, res) => {
     const {fullName, email} = req.body
 
-    if (!fullName || !email) {
+    if (!fullName && !email) {
         throw new ApiError(400, "All fields are required")
     }
 
@@ -293,9 +295,8 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
         throw new ApiError(400, "Avatar file is missing")
     }
 
-    //TODO: delete old image - assignment
-
     const avatar = await uploadOnCloudinary(avatarLocalPath)
+    console.log(avatar.url)
 
     if (!avatar.url) {
         throw new ApiError(400, "Error while uploading on avatar")
