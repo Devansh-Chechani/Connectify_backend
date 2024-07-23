@@ -1,5 +1,6 @@
 import mongoose, { isValidObjectId } from "mongoose"
 import {Tweet} from "../models/tweet.model.js"
+import {Like} from "../models/like.model.js"
 import {User} from "../models/user.model.js"
 import {ApiError} from "../utils/ApiError.js"
 import {ApiResponse} from "../utils/ApiResponse.js"
@@ -28,72 +29,65 @@ const createTweet = asyncHandler(async (req, res) => {
 })
 
 const getUserTweets = asyncHandler(async (req, res) => {
-    // TODO: get user tweets
-    const {userId} = req.params
+    const { userId } = req.params;
 
-    if(!isValidObjectId(userId) ){
-        throw new ApiError(401,"Invalid ObjectId")
+    if (!isValidObjectId(userId)) {
+        throw new ApiError(400, "Invalid userId");
     }
 
     const tweets = await Tweet.aggregate([
         {
-            $match:{
-              owner: new mongoose.Types.ObjectId(userId)
-            }
+            $match: {
+                owner: new mongoose.Types.ObjectId(userId),
+            },
         },
         {
-          $lookup:{
-            from:"users",
-            localField:"owner",
-            foreignField:"_id",
-            as:"ownerdetails",
-            pipeline:[
-               {
-                $project:{
-                    username:1,
-                    avatar:1
-                }
-               }
-               
-            ]
-          }
+            $lookup: {
+                from: "users",
+                localField: "owner",
+                foreignField: "_id",
+                as: "ownerDetails",
+                pipeline: [
+                    {
+                        $project: {
+                            username: 1,
+                            avatar: 1,
+                        },
+                    },
+                ],
+            },
         },
         {
-            $addFields:{
-                ownerdetails:{
-                    $first:"$ownerdetails"
-                 }
-                }
+            $lookup: {
+                from: "likes",
+                localField: "_id",
+                foreignField: "tweet",
+                as: "likeDetails",
+                pipeline: [
+                    {
+                        $project: {
+                            likedBy: 1,
+                        },
+                    },
+                ],
+            },
         },
         {
-           $lookup:{
-             from:"likes",
-            localField:"_id",
-            foreignField:"tweet",
-            as:"tweetLikes",
-            pipeline:[
-                {
-                    $project:{
-                        likedBy:1
-                    }
-                }
-            ]
-           }
-        },
-        {
-           $addFields:{
-             likescount:{
-                $size: "$tweetLikes"
-             },
-             isLiked: {
+            $addFields: {
+                likesCount: {
+                    $size: "$likeDetails",
+                },
+                ownerDetails: {
+                    $first: "$ownerDetails",
+                },
+                isLiked: {
                     $cond: {
-                        if: {$in: [req.user?._id, "$tweetLikes.likedBy"]},
+                        if: {$in: [req.user?._id, "$likeDetails.likedBy"]},
                         then: true,
                         else: false
                     }
                 }
-           }
-           
+            },
         },
         {
             $sort: {
@@ -101,23 +95,21 @@ const getUserTweets = asyncHandler(async (req, res) => {
             }
         },
         {
-            $project:{
-                content:1,
-                createdAt:1,
-                ownerdetails:1,
-                likescount:1,
-                isLiked:1
-                //tweetLikes:1
-            }
-        }
-       
+            $project: {
+                content: 1,
+                ownerDetails: 1,
+                likesCount: 1,
+                createdAt: 1,
+                isLiked: 1
+            },
+        },
+    ]);
 
-    ])
+    return res
+        .status(200)
+        .json(new ApiResponse(200, tweets, "Tweets fetched successfully"));
+});
 
-     return res.status(200).json(
-        new ApiResponse(201,tweets,"All the tweets of a user")
-     )
-})
 
 const updateTweet = asyncHandler(async (req, res) => {
     //TODO: update tweet
@@ -174,6 +166,12 @@ const deleteTweet = asyncHandler(async (req, res) => {
     }
 
     const tweet = await Tweet.findById(tweetId)
+     if(!tweet){
+        throw new ApiError(404,"Tweet Not Found!")
+     }
+
+     console.log(tweet)
+
     // This toString() method was required to make the code run
     if(tweet.owner.toString() !== req.user?._id.toString()){
         throw new ApiError(403,"Unauthorized request,users can delete tweets made by them only")
