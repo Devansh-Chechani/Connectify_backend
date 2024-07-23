@@ -111,7 +111,7 @@ const addComment = asyncHandler(async (req, res) => {
        owner:req.user._id
     })
 
-    if(!content){
+    if(!comment){
            throw new ApiError(401,"Comment not created!")
     }
 
