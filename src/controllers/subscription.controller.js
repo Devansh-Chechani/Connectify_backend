@@ -7,38 +7,52 @@ import {asyncHandler} from "../utils/asyncHandler.js"
 
 
 const toggleSubscription = asyncHandler(async (req, res) => {
-    const {channelId} = req.params
+    const { channelId } = req.params;
     // TODO: toggle subscription
-   //  console.log(channelId)
-      if(!isValidObjectId(channelId)){
-          throw new ApiError (402,"channelId id not valid!")
-       }
-       const channel = await User.findById(channelId)
-      
-       const existedSubscriber =  await Subscription.findOne({ channel: channelId, subscriber: req.user?._id });
-       
-       if(!existedSubscriber){
-          const subscribe =  await Subscription.create({
-              subscriber:req.user._id,
-              channel: channelId
-           })
-       }
-       else{
-          await Subscription.findOneAndDelete({ channel: channelId, subscriber: req.user._id });
-       }
-     
-       res.status(200).json(
-        {message : "Subscription successfully "}
-       )
-      
-})
+
+    if (!isValidObjectId(channelId)) {
+        throw new ApiError(400, "Invalid channelId");
+    }
+
+    const isSubscribed = await Subscription.findOne({
+        subscriber: req.user?._id,
+        channel: channelId,
+    });
+
+    if (isSubscribed) {
+        await Subscription.findByIdAndDelete(isSubscribed?._id);
+
+        return res
+            .status(200)
+            .json(
+                new ApiResponse(
+                    200,
+                    { subscribed: false },
+                    "unsunscribed successfully"
+                )
+            );
+    }
+
+    await Subscription.create({
+        subscriber: req.user?._id,
+        channel: channelId,
+    });
+
+    return res
+        .status(200)
+        .json(
+            new ApiResponse(
+                200,
+                { subscribed: true },
+                "subscribed successfully"
+            )
+        );
+});
 
 // controller to return subscriber list of a channel
 const getUserChannelSubscribers = asyncHandler(async (req, res) => {
     
     let {channelId} = req.params
-
-
     channelId = new mongoose.Types.ObjectId(channelId)
 
    const userSubscribers =  await Subscription.aggregate([
@@ -102,7 +116,7 @@ const getUserChannelSubscribers = asyncHandler(async (req, res) => {
         },
     ])
 
-    res.status(200).json(
+   return res.status(200).json(
         new ApiResponse(201,{userSubscribers},"Subscribers of a channel")
     )
 
