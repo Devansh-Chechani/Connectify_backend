@@ -37,7 +37,7 @@ const registerUser = asyncHandler( async (req, res) => {
 
 
     const {fullName, email, username, password } = req.body
-     console.log("email: ", email);
+    // console.log("email: ", email);
 
     if (
         [fullName, email, username, password].some((field) => field?.trim() === "")
@@ -69,7 +69,7 @@ const registerUser = asyncHandler( async (req, res) => {
     }
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
-    console.log(avatar.url)
+   // console.log(avatar.url)
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
 
     if (!avatar) {
@@ -115,7 +115,6 @@ const loginUser = asyncHandler(async (req, res) =>{
         throw new ApiError(400, "username or email is required")
     }
     
-    // Here is an alternative of above code based on logic discussed in video:
     // if (!(username || email)) {
     //     throw new ApiError(400, "username or email is required")
         
@@ -296,7 +295,7 @@ const updateUserAvatar = asyncHandler(async(req, res) => {
     }
 
     const avatar = await uploadOnCloudinary(avatarLocalPath)
-    console.log(avatar.url)
+    //console.log(avatar.url)
 
     if (!avatar.url) {
         throw new ApiError(400, "Error while uploading on avatar")
@@ -326,8 +325,6 @@ const updateUserCoverImage = asyncHandler(async(req, res) => {
     if (!coverImageLocalPath) {
         throw new ApiError(400, "Cover image file is missing")
     }
-
-    //TODO: delete old image - assignment
 
 
     const coverImage = await uploadOnCloudinary(coverImageLocalPath)
